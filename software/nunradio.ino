@@ -114,6 +114,7 @@ void loop() {
     Serial.println(volts[0]);
     Serial.println(volts[1]);
     Serial.println(volts[2]);
+    Serial.println(volts[3]);
     Serial.println(signals[0]);
 #endif
   }
