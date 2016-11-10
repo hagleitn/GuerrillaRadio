@@ -1,19 +1,18 @@
 use <lid.scad>;
 use <fillet.scad>;
 
-$fa = 12; //48
-$fs = 2; //8
-$fn = 0;
-
 debug = false;
+no_fillet = true;
+
+print = false;
+
+$fa = 48; // 12 for printing
+$fs = 8; // 2 for printing
+$fn = 0;
 
 render_outer = false;
 render_full = false;
 render_all = true;
-
-//$fa = 0.5; // default minimum facet angle is now 0.5
-//$fs = 0.5; // default minimum facet size is now 0.5 
-//$fn = 50;
 
 // thickness of the shell
 wall = 3;
@@ -71,6 +70,9 @@ trim_switch_r = 6.5/2;
 dims = [gimbal[0]*2+gimbal_space[0]*2,
         max(gimbal[1]+2*gimbal_space[1], module_bay[1]+2*wall+2*module_bay_lip),
         gimbal[2]];
+        
+// needs to be bigger than model
+box_size = (max(dims[0],dims[1],dims[2]) + handle_length) * 10;
         
 module module_bay_cutout() {
     cube([15,2*wall,16], center=true);
@@ -135,7 +137,7 @@ module core(d = [10,10,10], offset = 0, solid=false) {
 }
 
 module core_with_bay(solid=false, debug=false) {
-    if (!debug) {
+    if (!debug && !no_fillet) {
         fillet(r=25,steps=20) {
             core(dims, solid=true);
             translate([0,0,-dims[2]/2]) rotate([0,180,90])
@@ -183,7 +185,7 @@ module core_with_bay_and_handles(debug=false) {
     }
 }
 
-module skin(debug=false, thickness=5, box=400) {
+module skin(debug=false, thickness=5, box=box_size) {
     if (!debug) intersection() { 
         children(); 
         minkowski() {
@@ -196,21 +198,6 @@ module skin(debug=false, thickness=5, box=400) {
     }
     
     if (debug) children();
-}
-
-module core_skin(debug=false, w=wall, box=400) {
-    if (!debug) intersection() { 
-        core_with_bay_and_handles(); 
-        minkowski() {
-            cylinder(w,w,0,$fn=3,center=true);
-            difference() { 
-                cube(box,center=true); 
-                core_with_bay_and_handles(); 
-            } 
-        } 
-    }
-    
-    if (debug) core_with_bay_and_handles(debug=true);
 }
 
 module cutouts() {
@@ -323,7 +310,7 @@ module body(solid = false, w = wall) {
     difference() {
         union() {
             difference() {
-                skin(debug=debug,thickness=w, box=2*dims[0]) {
+                skin(debug=debug,thickness=w, box=box_size) {
                     core_with_bay_and_handles(debug=debug);
                 }
                 translate([0,0,-dims[2]/2]) rotate([0,180,90])
@@ -363,7 +350,7 @@ module outer_skin() render() {
     }
 }
 
-module bottom(box=400) {
+module bottom(box=box_size) {
     union () {
         difference() {
             outer_skin();
@@ -388,13 +375,13 @@ module bottom(box=400) {
 module cut_in_halves() {
     union() {
         translate([-100,0,gimbal[2]/2]) difference() { 
-            bottom(box=2*dims[0]); 
+            bottom(box=box_size); 
             battery_compartments(solid=true); 
         }
     
         translate([100,0,0]) difference() { 
             full_skin(); 
-            bottom(box=2*dims[0]); 
+            bottom(box=box_size); 
         }
     }
 }
