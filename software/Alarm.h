@@ -44,10 +44,21 @@ class Alarm {
   inline void setMinVolts(uint8_t *min);
   inline void setMinSignals(uint8_t *min);
 
+  inline bool hasSignalAlarm();
+  inline void hasVoltAlarm();
+
   void begin();
   void update(unsigned long currentTime, uint8_t *volts,
 	      uint8_t numVolts, uint8_t *signals, uint8_t numSignals);
 };
+
+inline bool Alarm::hasVoltAlarm() {
+  return voltAlarm;
+}
+
+inline bool Alarm::hasSignalAlarm() {
+  return signalAlarm;
+}
 
 inline void Alarm::setMinVolts(uint8_t *min) {
   minVolts = min;

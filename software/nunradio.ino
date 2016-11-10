@@ -7,27 +7,39 @@
 #include "Telemetry.h"
 #include "Controller.h"
 #include "PermanentStore.h"
+#include "Trim.h"
+#include "Led.h"
 
 #ifdef ENABLE_ALARM
 #include "Alarm.h"
 #endif
 
-Voltmeter vmeter(A1, 100000l, 30000l);
+Voltmeter vmeter1(A1, 0l, 1l);
+Voltmeter vmeter2(A2, 0l, 1l);
+
 Telemetry telemetry;
 
 #ifdef ENABLE_ALARM
 Alarm alarm(13);
 #endif
 
-uint8_t potPins[4] = {1,2,3,4};
-uint8_t switchPins[4] = {5,6,7,8};
+uint8_t potPins[4] = {A3,A4,A5,A6};
+uint8_t switchPins[4] = {2,3,4,5};
 
 Controller controller(potPins, switchPins);
 
+uint8_t trimHighPins[4] = {6,7,8,9};
+uint8_t trimLowPins[4] = {10,11,12,14};
+
+Trim trim(trimLowPins,trimHighPins, 13);
+
+uint8_t rbgPins[3] = {A7,A8,A9};
+Led led(rbgPins);
+
 #ifdef ENABLE_DUAL_RATES
-Radio radio(5, 13);
+Radio radio(6, 13);
 #else
-Radio radio(5);
+Radio radio(6);
 #endif
 
 ModelRegistry registry;
@@ -38,7 +50,7 @@ unsigned long lastM = 0;
 unsigned long currentTime = 0;
 unsigned int counter = 0;
 
-uint8_t volts[3] = {};
+uint8_t volts[4] = {};
 uint8_t signals[1] = {};
 
 void setModel(Model*, int16_t*);
@@ -58,14 +70,20 @@ void setup() {
   Serial.begin(9600);
 #endif
 
+  led.begin();
+  led.setColor(0,255,0);
+  
   radio.begin();
 
   controller.begin();
 
+  trim.begin();
+
   registry.begin();
   setModel(registry.current(), controller.getInputs());
 
-  vmeter.begin();
+  vmeter1.begin();
+  vmeter2.begin();
 
   telemetry.begin();
 
@@ -79,13 +97,15 @@ void loop() {
   currentTime = millis();
 
   if (counter % ITERATIONS(1000) == 0) {
-    vmeter.update();
-    volts[0] = vmeter.getVoltage();
+    vmeter1.update();
+    vmeter2.update();
+    volts[0] = vmeter1.getVoltage();
+    volts[1] = vmeter2.getVoltage();
 
     telemetry.update();
 
-    volts[1] = telemetry.getA1();
-    volts[2] = telemetry.getA2();
+    volts[2] = telemetry.getA1();
+    volts[3] = telemetry.getA2();
     signals[0] = telemetry.getRssi();
 
 #ifdef DEBUG
@@ -101,14 +121,22 @@ void loop() {
 #ifdef ENABLE_ALARM
   if (counter % ITERATIONS(300) == 0) {
     alarm.update(currentTime, volts,
-                 telemetry.aquired() ? 3 : 1, signals,
+                 telemetry.aquired() ? 4 : 2, signals,
                  telemetry.aquired() ? 1 : 0);
+
+    if (alarm.hasSignalAlarm() || alarm.hasVoltAlarm()) {
+       led.setColor(255,0,0);
+    } else {
+       led.setColor(0,255,0);
+    }
   }
 #endif
 
   controller.update(currentTime);
 
   radio.update(controller.getInputs());
+
+  trim.update(currentTime);
 
   ++counter;
 }
@@ -117,6 +145,8 @@ void setModel(Model *m, int16_t *inputs) {
   store.load(m);
 
   radio.setModel(m);
+
+  trim.setTrim(m->trim, m->numInputs);
 
 #ifdef ENABLE_ALARM
   alarm.setMinVolts(m->minVolts);
