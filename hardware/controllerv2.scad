@@ -2,12 +2,12 @@ use <lid.scad>;
 use <fillet.scad>;
 
 debug = false;
-no_fillet = true;
+no_fillet = false;
 
-print = false;
+print = true;
 
-$fa = 48; // 12 for printing
-$fs = 8; // 2 for printing
+$fa = 12; // 12 for printing
+$fs = 2; // 2 for printing
 $fn = 0;
 
 render_outer = false;
