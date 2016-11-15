@@ -19,7 +19,7 @@
 #define SCALE(A) (A)
 
 #define FRAME_LENGTH (18)
-#define PRESCALER (0)
+#define PRESCALER (72)
 
 class PpmEncoder {
 private:

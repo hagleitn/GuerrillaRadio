@@ -5,7 +5,7 @@
  *      Author: ghagleitner
  */
 
-#include <Controller.h>
+#include "Controller.h"
 #include "Model.h"
 
 Controller::Controller(
@@ -56,18 +56,13 @@ void Controller::begin() {
 
   adcHandle->Instance = adc;
 
-  //adcHandle.Init.ClockPrescaler = ADC_CLOCKPRESCALER_PCLK_DIV2;
-  //adcHandle.Init.Resolution = ADC_RESOLUTION_12B;
   adcHandle->Init.ScanConvMode = ENABLE;
   adcHandle->Init.ContinuousConvMode = DISABLE;
   adcHandle->Init.DiscontinuousConvMode = ENABLE;
   adcHandle->Init.NbrOfDiscConversion = 2;
-  //adcHandle.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   adcHandle->Init.ExternalTrigConv = ADC_SOFTWARE_START;
   adcHandle->Init.DataAlign = ADC_DATAALIGN_RIGHT;
   adcHandle->Init.NbrOfConversion = 0;
-  //adcHandle.Init.DMAContinuousRequests = ENABLE;
-  //adcHandle.Init.EOCSelection = DISABLE;
 
   HAL_ADC_Init(adcHandle);
 

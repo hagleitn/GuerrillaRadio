@@ -11,76 +11,88 @@ static CircularBuffer *_buf;
 
 void PulseGenerator::begin() {
 
-  _buf = &buf;
+	_buf = &buf;
 
-  DMA_HandleTypeDef DMA_Handle;
+	// Set up GPIOB1 (timer 3, channel 4) in alternate function (AF) mode
+	GPIO_InitTypeDef GPIO_InitStruct;
+	GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
+	GPIO_InitStruct.Pull  = GPIO_PULLUP;
+	GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+	GPIO_InitStruct.Pin   = pin;
+	HAL_GPIO_Init(port, &GPIO_InitStruct);
 
-  DMA_Handle.Instance = DMA1_Channel6;
-  DMA_Handle.Init.Direction = DMA_MEMORY_TO_PERIPH;
-  DMA_Handle.Init.PeriphInc = DMA_PINC_DISABLE;
-  DMA_Handle.Init.MemInc = DMA_MINC_ENABLE;
-  DMA_Handle.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
-  DMA_Handle.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
-  DMA_Handle.Init.Mode = DMA_CIRCULAR;
-  DMA_Handle.Init.Priority = DMA_PRIORITY_HIGH;
-  HAL_DMA_Init(&DMA_Handle);
+	// Set up the counter itself.
+	TIM_Base_InitTypeDef TIM_BaseStruct;
+	TIM_HandleTypeDef TIM_HandleStruct;
+	TIM_HandleStruct.Instance = timer;
 
-  // Set up GPIOB1 (timer 3, channel 4) in alternate function (AF) mode
-  GPIO_InitTypeDef GPIO_InitStruct;
-  GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull  = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-  GPIO_InitStruct.Pin   = pin;
-  HAL_GPIO_Init(port, &GPIO_InitStruct);
+	TIM_BaseStruct.Prescaler   = prescaler;
+	TIM_BaseStruct.CounterMode = TIM_COUNTERMODE_UP;
 
-  // Set up the counter itself.
-  TIM_Base_InitTypeDef TIM_BaseStruct;
-  TIM_HandleTypeDef TIM_HandleStruct;
-  TIM_HandleStruct.Instance = timer;
+	// When the counter hits the Period value, it will reset back to 0.
+	// This is the ARR register. In this case, the clock is 72mhz so:
+	TIM_BaseStruct.Period = 0;
 
-  // No prescaler (PSC), so the count (CNT) will count up 72 million times per second
-  TIM_BaseStruct.Prescaler   = prescaler;
-  TIM_BaseStruct.CounterMode = TIM_COUNTERMODE_UP;
+	TIM_HandleStruct.Init    = TIM_BaseStruct;
 
-  // When the counter hits the Period value, it will reset back to 0.
-  // This is the ARR register. In this case, the clock is 72mhz so:
-  //   64,000,000 / 842 / 2 = 38,005hz
-  // The divide by two is because it takes two toggles to create one wave
-  TIM_BaseStruct.Period = 0;
+	// Initialize the timer hardware in output compare mode
+	HAL_TIM_OC_Init(&TIM_HandleStruct);
 
-  TIM_HandleStruct.Init    = TIM_BaseStruct;
-  //TIM_HandleStruct.Channel = HAL_TIM_ACTIVE_CHANNEL_4;
+	// Set the parameters for output compare
+	TIM_OC_InitTypeDef TIM_OCStruct;
 
-  // Initialize the timer hardware in output compare mode
-  HAL_TIM_OC_Init(&TIM_HandleStruct);
+	// Toggle the associated pin when CNT >= CCR
+	TIM_OCStruct.OCMode = TIM_OCMODE_TOGGLE;
 
-  // Set the parameters for output compare
-  TIM_OC_InitTypeDef TIM_OCStruct;
+	// This is the counter value when the the channel will be toggled
+	// For this simple case, the value here does not matter.
+	TIM_OCStruct.Pulse = 0;
 
-  // Toggle the associated pin when CNT >= CCR
-  TIM_OCStruct.OCMode = TIM_OCMODE_TOGGLE;
+	// Configure the channel.
+	HAL_TIM_OC_ConfigChannel(&TIM_HandleStruct, &TIM_OCStruct, timerChannel);
 
-  // This is the counter value when the the channel will be toggled
-  // For this simple case, the value here does not matter.
-  TIM_OCStruct.Pulse = 0;
+	static DMA_HandleTypeDef  hdma_tim;
 
-  // Configure the channel.
-  HAL_TIM_OC_ConfigChannel(&TIM_HandleStruct, &TIM_OCStruct, timerChannel);
+	/* Set the parameters to be configured */
+	hdma_tim.Init.Direction = DMA_MEMORY_TO_PERIPH;
+	hdma_tim.Init.PeriphInc = DMA_PINC_DISABLE;
+	hdma_tim.Init.MemInc = DMA_MINC_ENABLE;
+	hdma_tim.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD ;
+	hdma_tim.Init.MemDataAlignment = DMA_MDATAALIGN_WORD ;
+	hdma_tim.Init.Mode = DMA_CIRCULAR;
+	hdma_tim.Init.Priority = DMA_PRIORITY_HIGH;
 
-  // swap out the first values
-  swap();
+	/* Set hdma_tim instance */
+	hdma_tim.Instance = DMA1_Channel1;
 
-  // Start the timer comparing
-  HAL_TIM_OC_Start(&TIM_HandleStruct, timerChannel);
+	__HAL_LINKDMA(&TIM_HandleStruct, hdma[TIM_DMA_ID_UPDATE], hdma_tim);
+
+	/* Initialize TIMx DMA handle */
+	HAL_DMA_Init(TIM_HandleStruct.hdma[TIM_DMA_ID_UPDATE]);
+
+	/*##-2- Configure the NVIC for DMA #########################################*/
+	/* NVIC configuration for DMA transfer complete interrupt */
+	HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
+
+	// swap out the first values
+	swap();
+
+	// Start the timer comparing
+	HAL_TIM_OC_Start(&TIM_HandleStruct, timerChannel);
+
+	HAL_TIM_DMABurst_WriteStart(&TIM_HandleStruct, TIM_DMABASE_ARR,
+			TIM_DMA_UPDATE, (uint32_t*)buf.getFirst(), TIM_DMABURSTLENGTH_1TRANSFER);
 }
 
 void PulseGenerator::update(uint32_t *times, int n) {
-  uint32_t *p = (uint32_t *)buf.getFirst();
-  while(n--) {
-    *p++ = *times++;
-  }
+	uint32_t *p = (uint32_t *)buf.getFirst();
+	while(n--) {
+		*p++ = *times++;
+	}
 }
 
 void swap() {
-  _buf->add(0);
+	_buf->add(0);
 }
