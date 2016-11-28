@@ -1,2 +1,2 @@
-### Welcome to nun-radio v2
+### Welcome to GuerrillaRadio!
 
