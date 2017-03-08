@@ -189,7 +189,8 @@ module skin(debug=false, thickness=5, box=box_size) {
     if (!debug) intersection() { 
         children(); 
         minkowski() {
-            cylinder(thickness,thickness,0,$fn=3,center=true);
+            cube(2*thickness,center=true);
+            //cylinder(thickness,thickness,0,$fn=3,center=true);
             difference() { 
                 cube(box,center=true); 
                 children(); 
