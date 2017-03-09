@@ -6,8 +6,8 @@ no_fillet = false;
 
 print = true;
 
-$fa = 12; // 12 for printing
-$fs = 2; // 2 for printing
+$fa = 6; // 12 for printing
+$fs = 1; // 2 for printing
 $fn = 0;
 
 render_outer = false;
