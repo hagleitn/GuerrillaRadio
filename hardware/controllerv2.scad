@@ -6,8 +6,8 @@ no_fillet = false;
 
 print = true;
 
-$fa = 6; // 12 for printing
-$fs = 1; // 2 for printing
+$fa = 12; // 12 for printing
+$fs = 2; // 2 for printing
 $fn = 0;
 
 render_outer = false;
@@ -15,7 +15,7 @@ render_full = false;
 render_all = true;
 
 // thickness of the shell
-wall = 3;
+wall = 1.5;
 
 // handle dimensions
 handle_max_width = 35;
