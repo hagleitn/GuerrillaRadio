@@ -4,10 +4,8 @@ $fn = 50;
 
 bay = [60,45];
 lip = 2;
-wall = 1;
+//wall = 1.5;
 box_wall = 1;
-
-cap = [13, 4, 1];
 
 module wedge(d = [1,1,1], center = false) {
     mov = center ? [-d[0]/2,-d[1]/2,0] : [0,0,d[2]]/2;
@@ -29,10 +27,11 @@ module rounded_cube(d=[1,1,1], center = false, r = 1) {
     }
 }
 
-d = [17,4,wall+6];
 space = 1;
 
-module box(solid=false) {
+module box(solid=false, wall) {
+    d = [17,4,wall+6];
+    cap = [13, 4, wall];
     rotate([0,180,0])
     difference() {
         union() {
@@ -66,7 +65,9 @@ module box(solid=false) {
     }
 }
 
-module module_cover() render() {
+module module_cover(wall) render() {
+    d = [17,4,wall+6];
+    cap = [13, 4, wall];
     union() {
         difference() {
             union() {
@@ -78,13 +79,13 @@ module module_cover() render() {
                 translate([0,-bay[1]/2-lip+space,wall/2-cap[2]/2]) 
                     rounded_cube(cap, center = true);
             }
-            translate([0, bay[1]/2-d[1]/2, wall/2]) box(solid=true);
-            mirror([0,1,0]) translate([0, bay[1]/2-d[1]/2, wall/2]) box(solid=true);
+            translate([0, bay[1]/2-d[1]/2, wall/2]) box(solid=true, wall=wall);
+            mirror([0,1,0]) translate([0, bay[1]/2-d[1]/2, wall/2]) box(solid=true, wall=wall);
         }
     
-        translate([0, bay[1]/2-d[1]/2,wall/2]) box();
-        mirror([0,1,0]) translate([0, bay[1]/2-d[1]/2,wall/2]) box();
+        translate([0, bay[1]/2-d[1]/2,wall/2]) box(wall=wall);
+        mirror([0,1,0]) translate([0, bay[1]/2-d[1]/2,wall/2]) box(wall=wall);
     }
 }
 
-module_cover();
+module_cover(1.5);
